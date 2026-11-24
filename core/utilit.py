@@ -1,0 +1,38 @@
+import ipaddress
+import time
+
+from fastapi import HTTPException, Request
+from collections import defaultdict, deque
+
+RATE_LIMIT_WINDOW = 60.0
+RATE_LIMIT_REQUESTS = 6
+request_log: dict[str, deque[float]] = defaultdict(deque)
+
+# ---------------------------------------------------------------------------
+# Утилиты
+# ---------------------------------------------------------------------------
+def client_key(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    candidate = forwarded.split(",")[0].strip() if forwarded else ""
+    if not candidate and request.client:
+        candidate = request.client.host
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return candidate or "unknown"
+
+
+def check_rate_limit(key: str) -> None:
+    now = time.monotonic()
+    bucket = request_log[key]
+    while bucket and now - bucket[0] > RATE_LIMIT_WINDOW:
+        bucket.popleft()
+    if len(bucket) >= RATE_LIMIT_REQUESTS:
+        retry_after = int(RATE_LIMIT_WINDOW - (now - bucket[0])) + 1
+        raise HTTPException(
+            status_code=429,
+            detail=f"Слишком много запросов. Попробуйте снова через {retry_after} сек.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    bucket.append(now)
+
