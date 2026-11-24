@@ -6,8 +6,7 @@ import httpx
 from fastapi import HTTPException
 
 from core.pydantic_models import Phase, Resource, Roadmap, RoadmapRequest
-from main import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
-from main import app
+from main import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL, app
 
 with open('core/system_prompt.txt', 'r', encoding='utf-8') as file:
     SYSTEM_PROMPT = file.read()

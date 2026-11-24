@@ -1,8 +1,8 @@
 import ipaddress
 import time
+from collections import defaultdict, deque
 
 from fastapi import HTTPException, Request
-from collections import defaultdict, deque
 
 RATE_LIMIT_WINDOW = 60.0
 RATE_LIMIT_REQUESTS = 6
