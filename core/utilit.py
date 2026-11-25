@@ -22,13 +22,17 @@ def client_key(request: Request) -> str:
         return candidate or "unknown"
 
 
-def check_rate_limit(key: str) -> None:
+def check_rate_limit(
+    key: str,
+    limit: int = RATE_LIMIT_REQUESTS,
+    window: float = RATE_LIMIT_WINDOW,
+) -> None:
     now = time.monotonic()
     bucket = request_log[key]
-    while bucket and now - bucket[0] > RATE_LIMIT_WINDOW:
+    while bucket and now - bucket[0] > window:
         bucket.popleft()
-    if len(bucket) >= RATE_LIMIT_REQUESTS:
-        retry_after = int(RATE_LIMIT_WINDOW - (now - bucket[0])) + 1
+    if len(bucket) >= limit:
+        retry_after = int(window - (now - bucket[0])) + 1
         raise HTTPException(
             status_code=429,
             detail=f"Слишком много запросов. Попробуйте снова через {retry_after} сек.",

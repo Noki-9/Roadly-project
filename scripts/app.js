@@ -4,18 +4,13 @@
 (() => {
     "use strict";
 
-    const STORAGE = {
-        theme: "roadly:theme",
-        roadmap: "roadly:roadmap",
-        done: "roadly:done",
-    };
+    const DRAFT_KEY = "roadly:draft";
+    const LEGACY_ROADMAP_KEY = "roadly:roadmap";
+    const LEGACY_DONE_KEY = "roadly:done";
 
     const MAX_PROMPT = 800;
 
     const el = {
-        html: document.documentElement,
-        header: document.querySelector(".site-header"),
-        themeToggle: document.getElementById("themeToggle"),
         form: document.getElementById("roadmapForm"),
         prompt: document.getElementById("prompt"),
         charCount: document.getElementById("charCount"),
@@ -48,6 +43,7 @@
         copyBtn: document.getElementById("copyBtn"),
         downloadBtn: document.getElementById("downloadBtn"),
         newBtn: document.getElementById("newBtn"),
+        openSavedBtn: document.getElementById("openSavedBtn"),
         toast: document.getElementById("toast"),
     };
 
@@ -70,10 +66,15 @@
     ];
 
     let currentRoadmap = null;
+    let currentRoadmapId = null;
     let doneTasks = new Set();
     let loadingTimer = null;
     let toastTimer = null;
     let abortController = null;
+    let progressTimer = null;
+    const authenticated = document.body.dataset.authenticated === "true";
+    const csrfToken =
+        document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
 
     /* ------------------------------------------------------------
        Helpers
@@ -106,57 +107,31 @@
         toastTimer = setTimeout(() => el.toast.classList.remove("is-visible"), 2400);
     };
 
-    const saveStorage = (key, value) => {
+    const saveDraft = (value) => {
         try {
-            localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+            sessionStorage.setItem(DRAFT_KEY, value);
         } catch {
             /* storage may be unavailable (private mode) */
         }
     };
 
-    const readStorage = (key) => {
+    function restoreDraft() {
         try {
-            return localStorage.getItem(key);
-        } catch {
-            return null;
-        }
-    };
-
-    const removeStorage = (key) => {
-        try {
-            localStorage.removeItem(key);
+            const draft = sessionStorage.getItem(DRAFT_KEY);
+            sessionStorage.removeItem(DRAFT_KEY);
+            if (draft) {
+                el.prompt.value = draft;
+                updateCharCount();
+            }
         } catch {
             /* noop */
         }
-    };
-
-    /* ------------------------------------------------------------
-       Theme
-       ------------------------------------------------------------ */
-    function applyTheme(theme) {
-        el.html.setAttribute("data-theme", theme);
-        el.themeToggle.setAttribute(
-            "aria-label",
-            theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"
-        );
-        saveStorage(STORAGE.theme, theme);
     }
 
-    function initTheme() {
-        const stored = readStorage(STORAGE.theme);
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const theme = stored === "light" || stored === "dark" ? stored : prefersDark ? "dark" : "light";
-        el.html.setAttribute("data-theme", theme);
-        el.themeToggle.setAttribute(
-            "aria-label",
-            theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"
-        );
+    function goToLogin() {
+        saveDraft(el.prompt.value);
+        window.location.assign(`/login?next=${encodeURIComponent("/#generator")}`);
     }
-
-    el.themeToggle.addEventListener("click", () => {
-        const next = el.html.getAttribute("data-theme") === "dark" ? "light" : "dark";
-        applyTheme(next);
-    });
 
     /* ------------------------------------------------------------
        Prompt UX
@@ -188,12 +163,6 @@
             el.form.requestSubmit();
         }
     });
-
-    window.addEventListener(
-        "scroll",
-        () => el.header.classList.toggle("is-scrolled", window.scrollY > 8),
-        { passive: true }
-    );
 
     /* ------------------------------------------------------------
        Loading / errors
@@ -253,6 +222,11 @@
             return;
         }
 
+        if (!authenticated) {
+            goToLogin();
+            return;
+        }
+
         if (abortController) abortController.abort();
         abortController = new AbortController();
         const timeout = setTimeout(() => abortController.abort(), 90_000);
@@ -263,7 +237,11 @@
         try {
             const response = await fetch("/api/roadmap", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    "X-CSRF-Token": csrfToken,
+                },
                 body: JSON.stringify({
                     prompt,
                     level: el.level.value,
@@ -272,6 +250,11 @@
                 }),
                 signal: abortController.signal,
             });
+
+            if (response.status === 401) {
+                goToLogin();
+                return;
+            }
 
             let payload = null;
             try {
@@ -284,7 +267,9 @@
                 const detail =
                     (payload && (payload.detail || payload.message)) ||
                     `Сервис ответил с ошибкой ${response.status}. Попробуйте ещё раз.`;
-                throw new Error(detail);
+                throw new Error(
+                    Array.isArray(detail) ? "Проверьте параметры запроса и попробуйте снова." : detail
+                );
             }
 
             if (!payload || !Array.isArray(payload.phases) || payload.phases.length === 0) {
@@ -292,13 +277,22 @@
             }
 
             currentRoadmap = normalizeRoadmap(payload);
+            currentRoadmapId = payload.id ? Number(payload.id) : null;
             doneTasks = new Set();
             renderRoadmap(currentRoadmap);
-            persist();
+
+            if (el.openSavedBtn) {
+                if (currentRoadmapId) {
+                    el.openSavedBtn.href = `/roadmaps/${currentRoadmapId}`;
+                    el.openSavedBtn.hidden = false;
+                } else {
+                    el.openSavedBtn.hidden = true;
+                }
+            }
 
             el.result.hidden = false;
             el.result.scrollIntoView({ behavior: "smooth", block: "start" });
-            showToast("Roadmap готов 🎉");
+            showToast("Roadmap готов — сохранён в кабинете 🎉");
         } catch (error) {
             if (error.name === "AbortError") {
                 showError(
@@ -470,7 +464,7 @@
                 ? "В этом roadmap пока нет задач."
                 : done === total
                   ? `Все ${total} ${plural(total, "задача", "задачи", "задач")} выполнены — отличная работа!`
-                  : `Выполнено ${done} из ${total}. Отмечайте задачи — прогресс сохранится в браузере.`;
+                  : `Выполнено ${done} из ${total}. Отмечайте задачи — прогресс сохранится в аккаунте.`;
         el.progressNote.classList.toggle("is-complete", total > 0 && done === total);
 
         currentRoadmap.phases.forEach((phase, phaseIndex) => {
@@ -491,38 +485,40 @@
         if (checkbox.checked) doneTasks.add(id);
         else doneTasks.delete(id);
         updateProgress();
-        persist();
+        scheduleProgressSave();
     });
 
     /* ------------------------------------------------------------
-       Persistence
+       Persistence (база данных)
        ------------------------------------------------------------ */
-    function persist() {
-        if (!currentRoadmap) return;
-        saveStorage(STORAGE.roadmap, currentRoadmap);
-        saveStorage(STORAGE.done, Array.from(doneTasks));
+    async function saveProgress() {
+        if (!currentRoadmapId) return;
+        try {
+            const response = await fetch(`/api/roadmaps/${currentRoadmapId}/progress`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    "X-CSRF-Token": csrfToken,
+                },
+                body: JSON.stringify({ done_tasks: Array.from(doneTasks) }),
+            });
+
+            if (response.status === 401) {
+                goToLogin();
+                return;
+            }
+            if (!response.ok) {
+                showToast("Не удалось сохранить прогресс. Попробуйте ещё раз.");
+            }
+        } catch {
+            showToast("Не удалось сохранить прогресс. Проверьте соединение.");
+        }
     }
 
-    function restore() {
-        const rawRoadmap = readStorage(STORAGE.roadmap);
-        if (!rawRoadmap) return;
-
-        try {
-            const parsed = JSON.parse(rawRoadmap);
-            if (!parsed || !Array.isArray(parsed.phases) || parsed.phases.length === 0) return;
-            currentRoadmap = normalizeRoadmap(parsed);
-
-            const rawDone = readStorage(STORAGE.done);
-            const saved = rawDone ? JSON.parse(rawDone) : [];
-            doneTasks = new Set(Array.isArray(saved) ? saved : []);
-
-            renderRoadmap(currentRoadmap);
-            el.result.hidden = false;
-            el.newBtn.hidden = false;
-        } catch {
-            removeStorage(STORAGE.roadmap);
-            removeStorage(STORAGE.done);
-        }
+    function scheduleProgressSave() {
+        clearTimeout(progressTimer);
+        progressTimer = setTimeout(saveProgress, 350);
     }
 
     /* ------------------------------------------------------------
@@ -623,9 +619,9 @@
 
     el.newBtn.addEventListener("click", () => {
         currentRoadmap = null;
+        currentRoadmapId = null;
         doneTasks = new Set();
-        removeStorage(STORAGE.roadmap);
-        removeStorage(STORAGE.done);
+        if (el.openSavedBtn) el.openSavedBtn.hidden = true;
         el.result.hidden = true;
         el.prompt.value = "";
         updateCharCount();
@@ -648,7 +644,13 @@
     /* ------------------------------------------------------------
        Boot
        ------------------------------------------------------------ */
-    initTheme();
+    try {
+        // Старые версии хранили roadmap в localStorage — данные переехали в БД.
+        localStorage.removeItem(LEGACY_ROADMAP_KEY);
+        localStorage.removeItem(LEGACY_DONE_KEY);
+    } catch {
+        /* noop */
+    }
     updateCharCount();
-    restore();
+    restoreDraft();
 })();

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}Roadly — AI-roadmap под вашу цель{% endblock %}</title>
+    <script>
+        // Применяем тему до отрисовки, чтобы не было вспышки светлого фона.
+        (() => {
+            try {
+                const stored = localStorage.getItem("roadly:theme");
+                const theme = stored === "light" || stored === "dark"
+                    ? stored
+                    : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+                document.documentElement.setAttribute("data-theme", theme);
+            } catch (_) { /* noop */ }
+        })();
+    </script>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%235b4bff'/%3E%3Cpath d='M9 22V10h5.2a4 4 0 0 1 0 8H9' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15 18l6 4' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/scripts/theme.js" defer></script>
+    {% block head %}{% endblock %}
+</head>
+<body data-authenticated="{{ 'true' if current_user else 'false' }}">
+    <div class="backdrop" aria-hidden="true">
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="grid"></div>
+    </div>
+
+    {% include "partials/header.html" %}
+
+    {% if flashes %}
+    <div class="flash-stack" role="status" aria-live="polite">
+        {% for flash in flashes %}
+        <div class="flash flash-{{ flash.kind }}">
+            <span>{{ flash.message }}</span>
+            <button type="button" class="flash-close" data-flash-close aria-label="Закрыть сообщение">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main class="{% block main_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% include "partials/footer.html" %}
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

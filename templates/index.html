@@ -1,263 +1,208 @@
-<!DOCTYPE html>
-<html lang="ru" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Roadly — AI-планировщик, который превращает вашу цель в пошаговый roadmap обучения.">
-    <title>Roadly — AI-roadmap под вашу цель</title>
-    <script>
-        // Применяем тему до отрисовки, чтобы не было вспышки светлого фона.
-        (() => {
-            try {
-                const stored = localStorage.getItem("roadly:theme");
-                const theme = stored === "light" || stored === "dark"
-                    ? stored
-                    : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-                document.documentElement.setAttribute("data-theme", theme);
-            } catch (_) { /* noop */ }
-        })();
-    </script>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%235b4bff'/%3E%3Cpath d='M9 22V10h5.2a4 4 0 0 1 0 8H9' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15 18l6 4' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/static/styles.css">
-    <script src="/scripts/app.js" defer></script>
-</head>
-<body>
-    <div class="backdrop" aria-hidden="true">
-        <div class="orb orb-a"></div>
-        <div class="orb orb-b"></div>
-        <div class="grid"></div>
+{% extends "base.html" %}
+
+{% block title %}Roadly — AI-roadmap под вашу цель{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <p class="eyebrow"><span class="pulse"></span>AI-планировщик обучения</p>
+    <h1>Превратите цель<br>в понятный <span class="gradient-text">roadmap</span></h1>
+    <p class="lead">
+        Опишите, чему хотите научиться или какой проект запустить. Мы разложим путь
+        на этапы, задачи и сроки — чтобы двигаться по шагам, а не тонуть в хаосе.
+    </p>
+</section>
+
+<section class="composer" id="generator" aria-labelledby="composerTitle">
+    <form id="roadmapForm" novalidate>
+        <div class="composer-head">
+            <h2 id="composerTitle">Опишите вашу цель</h2>
+            <span class="secure-note">
+                {% if current_user %}
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                    <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+                Roadmap сохранится в вашем кабинете
+                {% else %}
+                <a href="/login?next=/%23generator">Войдите</a>&nbsp;— и roadmap сохранится
+                {% endif %}
+            </span>
+        </div>
+
+        <label class="sr-only" for="prompt">Ваша цель</label>
+        <div class="textarea-wrap">
+            <textarea
+                id="prompt"
+                name="prompt"
+                maxlength="800"
+                rows="4"
+                placeholder="Например: хочу стать junior frontend-разработчиком за 6 месяцев, у меня 2 часа в день и базовые знания HTML."
+                required
+            ></textarea>
+            <span class="char-counter"><span id="charCount">0</span>/800</span>
+        </div>
+
+        <div class="examples" id="examples" aria-label="Примеры запросов">
+            <button type="button" class="chip" data-prompt="Хочу с нуля выучить Python и через 4 месяца устроиться на junior-позицию. Могу уделять 1,5 часа в день.">Python с нуля до junior</button>
+            <button type="button" class="chip" data-prompt="Запустить свой интернет-магазин на Shopify за 2 месяца, без опыта в маркетинге.">Запуск интернет-магазина</button>
+            <button type="button" class="chip" data-prompt="Подготовиться к собеседованию на middle backend-разработчика: алгоритмы, System Design, базы данных. У меня 6 недель.">Подготовка к интервью</button>
+            <button type="button" class="chip" data-prompt="Выучить английский с B1 до C1 за год, занимаясь 30 минут в день.">Английский B1 → C1</button>
+        </div>
+
+        <div class="controls">
+            <label class="select-field">
+                <span>Уровень</span>
+                <select id="level" name="level">
+                    <option value="новичок">Новичок</option>
+                    <option value="базовый">У меня есть база</option>
+                    <option value="средний">Средний</option>
+                    <option value="продвинутый">Продвинутый</option>
+                </select>
+            </label>
+            <label class="select-field">
+                <span>Темп</span>
+                <select id="pace" name="pace">
+                    <option value="спокойный">Спокойный</option>
+                    <option value="сбалансированный" selected>Умеренный</option>
+                    <option value="интенсивный">Интенсивный</option>
+                </select>
+            </label>
+            <label class="select-field">
+                <span>Горизонт</span>
+                <select id="horizon" name="horizon">
+                    <option value="1 месяц">1 месяц</option>
+                    <option value="3 месяца" selected>3 месяца</option>
+                    <option value="6 месяцев">6 месяцев</option>
+                    <option value="1 год">1 год</option>
+                </select>
+            </label>
+
+            <button type="submit" class="primary-btn" id="generateBtn">
+                <svg class="spark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 2.8 13.9 9l6.2 1.9-6.2 1.9L12 19l-1.9-6.2L4 10.9 10.1 9 12 2.8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M18.5 16.5l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7.7-2.1Z" fill="currentColor"/>
+                </svg>
+                <span class="btn-label">Сгенерировать roadmap</span>
+                <span class="spinner" aria-hidden="true"></span>
+            </button>
+        </div>
+
+        <p class="hint"><kbd>Ctrl</kbd><span>+</span><kbd>Enter</kbd> — сгенерировать · обычно занимает 10–20 секунд</p>
+    </form>
+</section>
+
+<div id="alert" class="alert" role="alert" hidden>
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M12 7.5v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="12" cy="16.5" r="1" fill="currentColor"/>
+    </svg>
+    <div>
+        <strong id="alertTitle">Не удалось создать roadmap</strong>
+        <p id="alertText"></p>
+    </div>
+    <button type="button" class="alert-close" id="alertClose" aria-label="Закрыть сообщение">&times;</button>
+</div>
+
+<section class="loading-panel" id="loadingPanel" aria-live="polite" hidden>
+    <div class="loading-orbit" aria-hidden="true">
+        <span></span><span></span><span></span>
+    </div>
+    <div>
+        <h3>Собираем ваш маршрут</h3>
+        <p id="loadingStep">Разбираем цель и контекст…</p>
+    </div>
+    <div class="loading-bar"><span></span></div>
+</section>
+
+<section class="result" id="result" aria-live="polite" hidden>
+    <div class="result-head">
+        <div class="result-title-wrap">
+            <div class="result-badges">
+                <span class="badge">Ваш roadmap</span>
+                <span class="badge badge-ghost" id="demoBadge" hidden>Демо-режим</span>
+            </div>
+            <h2 id="resultTitle"></h2>
+            <p class="result-summary" id="resultSummary"></p>
+            <div class="meta-row" id="resultMeta"></div>
+        </div>
+        <div class="result-actions">
+            <a class="ghost-btn" id="openSavedBtn" href="/dashboard" hidden>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4.5V9H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                В кабинет
+            </a>
+            <button type="button" class="ghost-btn" id="copyBtn" title="Скопировать в Markdown">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                    <path d="M15 6.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+                Копировать
+            </button>
+            <button type="button" class="ghost-btn" id="downloadBtn" title="Скачать в Markdown">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 4v10m0 0 4-4m-4 4-4-4M4.5 17.5V19a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Скачать
+            </button>
+            <button type="button" class="primary-btn primary-btn-sm" id="newBtn">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+                </svg>
+                Новый
+            </button>
+        </div>
     </div>
 
-    <header class="site-header">
-        <a class="logo" href="/" aria-label="Roadly — на главную">
-            <span class="logo-mark">
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 18V7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10.5 14 16 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                </svg>
-            </span>
-            <span class="logo-text">Roadly</span>
-        </a>
-
-        <nav class="header-nav" aria-label="Основная навигация">
-            <a class="nav-link" href="#how">Как это работает</a>
-            <a class="nav-link" href="#generator">Генератор</a>
-        </nav>
-
-        <button class="icon-btn" id="themeToggle" type="button" aria-label="Переключить тему" title="Переключить тему">
-            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            </svg>
-        </button>
-    </header>
-
-    <main>
-        <section class="hero">
-            <p class="eyebrow"><span class="pulse"></span>AI-планировщик обучения</p>
-            <h1>Превратите цель<br>в понятный <span class="gradient-text">roadmap</span></h1>
-            <p class="lead">
-                Опишите, чему хотите научиться или какой проект запустить. Мы разложим путь
-                на этапы, задачи и сроки — чтобы двигаться по шагам, а не тонуть в хаосе.
-            </p>
-        </section>
-
-        <section class="composer" id="generator" aria-labelledby="composerTitle">
-            <form id="roadmapForm" novalidate>
-                <div class="composer-head">
-                    <h2 id="composerTitle">Опишите вашу цель</h2>
-                    <span class="secure-note">
-                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
-                            <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-                        </svg>
-                    </span>
-                </div>
-
-                <label class="sr-only" for="prompt">Ваша цель</label>
-                <div class="textarea-wrap">
-                    <textarea
-                        id="prompt"
-                        name="prompt"
-                        maxlength="800"
-                        rows="4"
-                        placeholder="Например: хочу стать junior frontend-разработчиком за 6 месяцев, у меня 2 часа в день и базовые знания HTML."
-                        required
-                    ></textarea>
-                    <span class="char-counter"><span id="charCount">0</span>/800</span>
-                </div>
-
-                <div class="examples" id="examples" aria-label="Примеры запросов">
-                    <button type="button" class="chip" data-prompt="Хочу с нуля выучить Python и через 4 месяца устроиться на junior-позицию. Могу уделять 1,5 часа в день.">Python с нуля до junior</button>
-                    <button type="button" class="chip" data-prompt="Запустить свой интернет-магазин на Shopify за 2 месяца, без опыта в маркетинге.">Запуск интернет-магазина</button>
-                    <button type="button" class="chip" data-prompt="Подготовиться к собеседованию на middle backend-разработчика: алгоритмы, System Design, базы данных. У меня 6 недель.">Подготовка к интервью</button>
-                    <button type="button" class="chip" data-prompt="Выучить английский с B1 до C1 за год, занимаясь 30 минут в день.">Английский B1 → C1</button>
-                </div>
-
-                <div class="controls">
-                    <label class="select-field">
-                        <span>Уровень</span>
-                        <select id="level" name="level">
-                            <option value="новичок">Новичок</option>
-                            <option value="базовый">У меня есть база</option>
-                            <option value="средний">Средний</option>
-                            <option value="продвинутый">Продвинутый</option>
-                        </select>
-                    </label>
-                    <label class="select-field">
-                        <span>Темп</span>
-                        <select id="pace" name="pace">
-                            <option value="спокойный">Спокойный</option>
-                            <option value="сбалансированный" selected>Умеренный</option>
-                            <option value="интенсивный">Интенсивный</option>
-                        </select>
-                    </label>
-                    <label class="select-field">
-                        <span>Горизонт</span>
-                        <select id="horizon" name="horizon">
-                            <option value="1 месяц">1 месяц</option>
-                            <option value="3 месяца" selected>3 месяца</option>
-                            <option value="6 месяцев">6 месяцев</option>
-                            <option value="1 год">1 год</option>
-                        </select>
-                    </label>
-
-                    <button type="submit" class="primary-btn" id="generateBtn">
-                        <svg class="spark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M12 2.8 13.9 9l6.2 1.9-6.2 1.9L12 19l-1.9-6.2L4 10.9 10.1 9 12 2.8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-                            <path d="M18.5 16.5l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7.7-2.1Z" fill="currentColor"/>
-                        </svg>
-                        <span class="btn-label">Сгенерировать roadmap</span>
-                        <span class="spinner" aria-hidden="true"></span>
-                    </button>
-                </div>
-
-                <p class="hint"><kbd>Ctrl</kbd><span>+</span><kbd>Enter</kbd> — сгенерировать · обычно занимает 10–20 секунд</p>
-            </form>
-        </section>
-
-        <div id="alert" class="alert" role="alert" hidden>
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M12 7.5v5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="12" cy="16.5" r="1" fill="currentColor"/>
-            </svg>
-            <div>
-                <strong id="alertTitle">Не удалось создать roadmap</strong>
-                <p id="alertText"></p>
-            </div>
-            <button type="button" class="alert-close" id="alertClose" aria-label="Закрыть сообщение">&times;</button>
+    <div class="progress-card">
+        <div class="progress-top">
+            <span>Прогресс по задачам</span>
+            <strong id="progressLabel">0%</strong>
         </div>
+        <div class="progress-track"><span id="progressBar"></span></div>
+        <p class="progress-note" id="progressNote">Отмечайте выполненные задачи — прогресс сохранится в вашем аккаунте.</p>
+    </div>
 
-        <section class="loading-panel" id="loadingPanel" aria-live="polite" hidden>
-            <div class="loading-orbit" aria-hidden="true">
-                <span></span><span></span><span></span>
-            </div>
-            <div>
-                <h3>Собираем ваш маршрут</h3>
-                <p id="loadingStep">Разбираем цель и контекст…</p>
-            </div>
-            <div class="loading-bar"><span></span></div>
-        </section>
+    <ol class="timeline" id="timeline"></ol>
 
-        <section class="result" id="result" aria-live="polite" hidden>
-            <div class="result-head">
-                <div class="result-title-wrap">
-                    <div class="result-badges">
-                        <span class="badge">Ваш roadmap</span>
-                        <span class="badge badge-ghost" id="demoBadge" hidden>Демо-режим</span>
-                    </div>
-                    <h2 id="resultTitle"></h2>
-                    <p class="result-summary" id="resultSummary"></p>
-                    <div class="meta-row" id="resultMeta"></div>
-                </div>
-                <div class="result-actions">
-                    <button type="button" class="ghost-btn" id="copyBtn" title="Скопировать в Markdown">
-                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <rect x="9" y="9" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
-                            <path d="M15 6.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-                        </svg>
-                        Копировать
-                    </button>
-                    <button type="button" class="ghost-btn" id="downloadBtn" title="Скачать в Markdown">
-                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M12 4v10m0 0 4-4m-4 4-4-4M4.5 17.5V19a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Скачать
-                    </button>
-                    <button type="button" class="primary-btn primary-btn-sm" id="newBtn">
-                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-                        </svg>
-                        Новый
-                    </button>
-                </div>
-            </div>
-
-            <div class="progress-card">
-                <div class="progress-top">
-                    <span>Прогресс по задачам</span>
-                    <strong id="progressLabel">0%</strong>
-                </div>
-                <div class="progress-track"><span id="progressBar"></span></div>
-                <p class="progress-note" id="progressNote">Отмечайте выполненные задачи — прогресс сохранится в браузере.</p>
-            </div>
-
-            <ol class="timeline" id="timeline"></ol>
-
-            <div class="extras" id="extras" hidden>
-                <div class="extra-card" id="skillsCard" hidden>
-                    <h3>Что вы освоите</h3>
-                    <ul class="skill-list" id="skillList"></ul>
-                </div>
-                <div class="extra-card" id="resourcesCard" hidden>
-                    <h3>Полезные ресурсы</h3>
-                    <ul class="resource-list" id="resourceList"></ul>
-                </div>
-            </div>
-        </section>
-
-        <section class="how" id="how" aria-labelledby="howTitle">
-            <div class="how-head">
-                <p class="eyebrow"><span class="pulse"></span>Три шага</p>
-                <h2 id="howTitle">От «хочу» до плана действий</h2>
-            </div>
-            <div class="how-grid">
-                <article class="how-card">
-                    <span class="step-number">01</span>
-                    <h3>Опишите цель</h3>
-                    <p>Одно-два предложения о том, чего хотите достичь, за какой срок и сколько времени готовы уделять.</p>
-                </article>
-                <article class="how-card">
-                    <span class="step-number">02</span>
-                    <h3>Получите маршрут</h3>
-                    <p>Модель разобьёт путь на последовательные этапы с конкретными задачами и результатом каждого этапа.</p>
-                </article>
-                <article class="how-card">
-                    <span class="step-number">03</span>
-                    <h3>Двигайтесь по шагам</h3>
-                    <p>Отмечайте задачи, следите за прогрессом и возвращайтесь к плану в любой момент — он сохранится.</p>
-                </article>
-            </div>
-        </section>
-    </main>
-
-    <footer class="site-footer">
-        <div class="footer-brand">
-            <span class="logo-mark logo-mark-sm">
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M6 18V7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10.5 14 16 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                </svg>
-            </span>
-            <span>Roadly</span>
+    <div class="extras" id="extras" hidden>
+        <div class="extra-card" id="skillsCard" hidden>
+            <h3>Что вы освоите</h3>
+            <ul class="skill-list" id="skillList"></ul>
         </div>
-        <p>Планы генерируются AI. Проверяйте факты и адаптируйте под себя.</p>
-    </footer>
+        <div class="extra-card" id="resourcesCard" hidden>
+            <h3>Полезные ресурсы</h3>
+            <ul class="resource-list" id="resourceList"></ul>
+        </div>
+    </div>
+</section>
 
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-</body>
-</html>
+<section class="how" id="how" aria-labelledby="howTitle">
+    <div class="how-head">
+        <p class="eyebrow"><span class="pulse"></span>Три шага</p>
+        <h2 id="howTitle">От «хочу» до плана действий</h2>
+    </div>
+    <div class="how-grid">
+        <article class="how-card">
+            <span class="step-number">01</span>
+            <h3>Опишите цель</h3>
+            <p>Одно-два предложения о том, чего хотите достичь, за какой срок и сколько времени готовы уделять.</p>
+        </article>
+        <article class="how-card">
+            <span class="step-number">02</span>
+            <h3>Получите маршрут</h3>
+            <p>Модель разобьёт путь на последовательные этапы с конкретными задачами и результатом каждого этапа.</p>
+        </article>
+        <article class="how-card">
+            <span class="step-number">03</span>
+            <h3>Двигайтесь по шагам</h3>
+            <p>Отмечайте задачи, следите за прогрессом и возвращайтесь к плану в любой момент — он хранится в аккаунте.</p>
+        </article>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/scripts/app.js" defer></script>
+{% endblock %}

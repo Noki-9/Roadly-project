@@ -61,3 +61,8 @@ class Roadmap(BaseModel):
     skills: list[str] = Field(default_factory=list)
     resources: list[Resource] = Field(default_factory=list)
     demo: bool = False
+
+
+class ProgressUpdate(BaseModel):
+    done_tasks: list[str] = Field(default_factory=list, max_length=500)
+

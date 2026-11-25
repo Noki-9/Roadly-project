@@ -2,4 +2,6 @@
 __pycache__/
 *.pyc
 .env
-.env.example
+roadly.db
+*.db
+.ruff_cache/

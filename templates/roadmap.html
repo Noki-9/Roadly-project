@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}{{ record.title }} — Roadly{% endblock %}
+
+{% block content %}
+<section class="detail-head">
+    <div class="result-badges">
+        <span class="badge">Ваш roadmap</span>
+        {% if payload.demo %}<span class="badge badge-ghost">Демо-режим</span>{% endif %}
+        <span class="badge badge-ghost">Создан {{ created_at }}</span>
+    </div>
+
+    <h1>{{ record.title }}</h1>
+    {% if record.summary %}<p class="result-summary">{{ record.summary }}</p>{% endif %}
+
+    <div class="meta-row">
+        {% if payload.duration %}
+        <span class="meta-pill">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            {{ payload.duration }}
+        </span>
+        {% endif %}
+        {% if record.level %}
+        <span class="meta-pill">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/>
+                <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.7"/>
+                <circle cx="12" cy="12" r="1" fill="currentColor"/>
+            </svg>
+            Уровень: {{ record.level }}
+        </span>
+        {% endif %}
+        <span class="meta-pill">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="m12 3.5 8 4.3-8 4.2-8-4.2 8-4.3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                <path d="m4 12 8 4.2 8-4.2M4 16.2l8 4.3 8-4.3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            </svg>
+            {{ stats.phases }} {{ plural_ru(stats.phases, "этап", "этапа", "этапов") }}
+        </span>
+        {% if stats.total %}
+        <span class="meta-pill">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M9 6.5h11M9 12h11M9 17.5h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="m3.5 6.5 1.4 1.4L7 5.5M3.5 12l1.4 1.4L7 11M3.5 17.5l1.4 1.4L7 16.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            {{ stats.total }} {{ plural_ru(stats.total, "задача", "задачи", "задач") }}
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="result-actions detail-actions">
+        <a class="ghost-btn" href="/dashboard">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M19 12H5m0 0 5-5m-5 5 5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Все roadmap
+        </a>
+        <button type="button" class="ghost-btn" id="copyBtn" title="Скопировать в Markdown">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="9" y="9" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M15 6.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            Копировать
+        </button>
+        <button type="button" class="ghost-btn" id="downloadBtn" title="Скачать в Markdown">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 4v10m0 0 4-4m-4 4-4-4M4.5 17.5V19a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Скачать
+        </button>
+        <a class="primary-btn primary-btn-sm" href="/#generator">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+            Новый
+        </a>
+    </div>
+</section>
+
+<div
+    class="progress-card"
+    id="progressCard"
+    data-progress-url="/api/roadmaps/{{ record.id }}/progress"
+    data-export-url="/roadmaps/{{ record.id }}/export.md"
+    data-csrf="{{ csrf_token }}"
+>
+    <div class="progress-top">
+        <span>Прогресс по задачам</span>
+        <strong id="progressLabel">{{ stats.percent }}%</strong>
+    </div>
+    <div class="progress-track"><span id="progressBar" style="width: {{ stats.percent }}%"></span></div>
+    <p class="progress-note {% if stats.total and stats.done == stats.total %}is-complete{% endif %}" id="progressNote">
+        {% if stats.total == 0 %}
+        В этом roadmap пока нет задач.
+        {% elif stats.done == stats.total %}
+        Все {{ stats.total }} {{ plural_ru(stats.total, "задача", "задачи", "задач") }} выполнены — отличная работа!
+        {% else %}
+        Выполнено {{ stats.done }} из {{ stats.total }}. Отмечайте задачи — прогресс сохраняется в аккаунте.
+        {% endif %}
+    </p>
+</div>
+
+<ol class="timeline" id="timeline">
+    {% for phase in view.phases %}
+    <li class="phase" data-phase="{{ phase.index }}" style="--delay: {{ (phase.index if phase.index < 8 else 8) * 60 }}ms">
+        <div class="phase-marker {% if phase.all_done %}is-done{% endif %}" aria-hidden="true">
+            {{ "%02d"|format(phase.index + 1) }}
+        </div>
+        <article class="phase-card {% if phase.all_done %}is-done{% endif %}">
+            <div class="phase-top">
+                <h3>{{ phase.title }}</h3>
+                {% if phase.duration %}
+                <span class="duration-pill">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/>
+                        <path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    {{ phase.duration }}
+                </span>
+                {% endif %}
+            </div>
+            {% if phase.description %}<p class="phase-desc">{{ phase.description }}</p>{% endif %}
+
+            {% if phase.tasks %}
+            <div class="task-list">
+                {% for task in phase.tasks %}
+                <label class="task">
+                    <input type="checkbox" data-task-id="{{ task.id }}" {% if task.done %}checked{% endif %}>
+                    <span class="task-box">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="m5 12.5 4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    <span class="task-text">{{ task.text }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if phase.outcome %}
+            <div class="outcome">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M6 21V4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    <path d="M6 5h10.5l-1.8 3.5 1.8 3.5H6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+                <span><strong>Результат этапа:</strong> {{ phase.outcome }}</span>
+            </div>
+            {% endif %}
+        </article>
+    </li>
+    {% endfor %}
+</ol>
+
+{% if view.skills or view.resources %}
+<div class="extras">
+    {% if view.skills %}
+    <div class="extra-card">
+        <h3>Что вы освоите</h3>
+        <ul class="skill-list">
+            {% for skill in view.skills %}<li>{{ skill }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if view.resources %}
+    <div class="extra-card">
+        <h3>Полезные ресурсы</h3>
+        <ul class="resource-list">
+            {% for resource in view.resources %}
+            {% if resource.title %}
+            <li>
+                {% if resource.url and (resource.url.startswith('http://') or resource.url.startswith('https://')) %}
+                <a href="{{ resource.url }}" target="_blank" rel="noopener noreferrer">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.54 3.54 0 0 0-5-5L11.5 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                        <path d="M13.5 10.5a3.5 3.5 0 0 0-5 0L6 13a3.54 3.54 0 0 0 5 5l1.5-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    </svg>
+                    {{ resource.title }}
+                </a>
+                {% else %}
+                <span class="resource-list-item">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.54 3.54 0 0 0-5-5L11.5 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                        <path d="M13.5 10.5a3.5 3.5 0 0 0-5 0L6 13a3.54 3.54 0 0 0 5 5l1.5-1.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    </svg>
+                    {{ resource.title }}
+                </span>
+                {% endif %}
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="detail-danger">
+    <form
+        method="post"
+        action="/roadmaps/{{ record.id }}/delete"
+        class="inline-form"
+        data-confirm="Удалить «{{ record.title }}»? Это действие нельзя отменить."
+    >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="ghost-btn danger-btn" type="submit">Удалить roadmap</button>
+    </form>
+</div>
+
+<script type="application/json" id="roadmapData">{{ payload|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="/scripts/roadmap.js" defer></script>
+{% endblock %}

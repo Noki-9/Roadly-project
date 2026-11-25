@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Мои roadmap — Roadly{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <p class="eyebrow"><span class="pulse"></span>Личный кабинет</p>
+    <div class="page-head-row">
+        <div>
+            <h1>Мои roadmap</h1>
+            <p class="lead">
+                Все маршруты, которые вы создали. Открывайте план, отмечайте задачи
+                и следите за прогрессом — данные хранятся в вашем аккаунте.
+            </p>
+        </div>
+        <a class="primary-btn" href="/#generator">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+            </svg>
+            Новый roadmap
+        </a>
+    </div>
+
+    {% if roadmaps %}
+    <div class="overview-grid">
+        <div class="overview-card">
+            <span>Roadmap</span>
+            <strong>{{ overview.roadmaps }}</strong>
+        </div>
+        <div class="overview-card">
+            <span>Задач выполнено</span>
+            <strong>{{ overview.done_tasks }} / {{ overview.total_tasks }}</strong>
+        </div>
+        <div class="overview-card">
+            <span>Общий прогресс</span>
+            <strong>{{ overview.percent }}%</strong>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+{% if roadmaps %}
+<div class="roadmap-grid">
+    {% for item in roadmaps %}
+    <article class="roadmap-card">
+        <div class="roadmap-card-top">
+            <span class="badge badge-ghost">
+                {{ item.stats.phases }} {{ plural_ru(item.stats.phases, "этап", "этапа", "этапов") }}
+            </span>
+            <span class="roadmap-date">{{ item.created_at }}</span>
+        </div>
+
+        <h2><a href="/roadmaps/{{ item.id }}">{{ item.title }}</a></h2>
+        <p class="roadmap-summary">{{ item.summary or item.prompt }}</p>
+
+        <div class="roadmap-progress">
+            <div class="progress-top">
+                <span>
+                    {{ item.stats.done }} из {{ item.stats.total }}
+                    {{ plural_ru(item.stats.total, "задача", "задачи", "задач") }}
+                </span>
+                <strong>{{ item.stats.percent }}%</strong>
+            </div>
+            <div class="progress-track"><span style="width: {{ item.stats.percent }}%"></span></div>
+        </div>
+
+        <div class="roadmap-tags">
+            {% if item.level %}<span>{{ item.level }}</span>{% endif %}
+            {% if item.horizon %}<span>{{ item.horizon }}</span>{% endif %}
+            {% if item.demo %}<span>демо</span>{% endif %}
+        </div>
+
+        <div class="roadmap-card-actions">
+            <a class="ghost-btn" href="/roadmaps/{{ item.id }}">Открыть</a>
+            <form
+                method="post"
+                action="/roadmaps/{{ item.id }}/delete"
+                class="inline-form"
+                data-confirm="Удалить «{{ item.title }}»? Это действие нельзя отменить."
+            >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="ghost-btn danger-btn" type="submit">Удалить</button>
+            </form>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<section class="empty-state">
+    <span class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 18V7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M10.5 14 16 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+    </span>
+    <h2>Пока здесь пусто</h2>
+    <p>Создайте первый roadmap — он появится в кабинете и будет храниться в базе.</p>
+    <a class="primary-btn" href="/#generator">Создать roadmap</a>
+</section>
+{% endif %}
+{% endblock %}
