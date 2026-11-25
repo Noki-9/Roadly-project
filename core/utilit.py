@@ -8,9 +8,7 @@ RATE_LIMIT_WINDOW = 60.0
 RATE_LIMIT_REQUESTS = 6
 request_log: dict[str, deque[float]] = defaultdict(deque)
 
-# ---------------------------------------------------------------------------
-# Утилиты
-# ---------------------------------------------------------------------------
+
 def client_key(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for", "")
     candidate = forwarded.split(",")[0].strip() if forwarded else ""
@@ -39,4 +37,3 @@ def check_rate_limit(
             headers={"Retry-After": str(retry_after)},
         )
     bucket.append(now)
-

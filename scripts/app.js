@@ -299,6 +299,13 @@
                     "Превышено время ожидания",
                     "Генерация заняла больше 90 секунд. Попробуйте ещё раз или упростите запрос."
                 );
+            } else if (error.message.includes("Ошибка проверки безопасности") || error.message.includes("Сессия устарела")) {
+                showError(
+                    "Сессия устарела",
+                    "Обновляем страницу для синхронизации данных. Пожалуйста, подождите..."
+                );
+                setTimeout(() => window.location.reload(), 1500);
+                return; // Прерываем выполнение, страница перезагрузится
             } else {
                 showError("Не удалось создать roadmap", error.message || "Неизвестная ошибка.");
             }
@@ -506,6 +513,11 @@
 
             if (response.status === 401) {
                 goToLogin();
+                return;
+            }
+            if (response.status === 400 || response.status === 403) {
+                showToast("Сессия устарела. Обновляем страницу...");
+                setTimeout(() => window.location.reload(), 1500);
                 return;
             }
             if (!response.ok) {
