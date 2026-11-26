@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 from fastapi import HTTPException
 
-from core.env_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL
+from core.env_config import LLM_API_KEY, LLM_CHAT_URL, LLM_MODEL, LLM_MAX_TOKENS
 from core.pydantic_models import Phase, Resource, Roadmap, RoadmapRequest
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "core" / "system_prompt.txt"
@@ -45,6 +45,7 @@ async def call_llm(request: RoadmapRequest, http: httpx.AsyncClient) -> Roadmap:
     payload: dict[str, Any] = {
         "model": LLM_MODEL,
         "temperature": 0.6,
+        "max_tokens": LLM_MAX_TOKENS,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_user_prompt(request)},

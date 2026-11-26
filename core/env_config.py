@@ -33,6 +33,7 @@ LLM_CHAT_URL = (os.getenv("LLM_CHAT_URL") or f"{LLM_BASE_URL}/chat/completions")
 LLM_MODEL = os.getenv("LLM_MODEL") or "gpt-4o-mini"
 LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "90"))
 LLM_ALLOW_NO_KEY = os.getenv("LLM_ALLOW_NO_KEY", "").lower() in {"1", "true", "yes", "on"}
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "4096"))
 DEMO_MODE = os.getenv("ROADLY_DEMO", "").lower() in {"1", "true", "yes", "on"}
 
 # --- Конфигурация сессий ---
