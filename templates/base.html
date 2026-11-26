@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Roadly — AI-планировщик: опишите цель и получите пошаговый roadmap с этапами, задачами, сроками и прогрессом.">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Roadly — AI-roadmap под вашу цель{% endblock %}</title>
     <script>
@@ -17,19 +18,17 @@
             } catch (_) { /* noop */ }
         })();
     </script>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%235b4bff'/%3E%3Cpath d='M9 22V10h5.2a4 4 0 0 1 0 8H9' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15 18l6 4' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
-    
-    <link rel="stylesheet" href="/static/styles.css?v=3">
-    
-    <script src="/scripts/theme.js?v=3" defer></script>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='2' fill='%231d1a16'/%3E%3Cpath d='M9 22V10h5.2a4 4 0 0 1 0 8H9' stroke='%23f2eee3' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15 18l6 4' stroke='%23b4432a' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+
+    <link rel="preload" href="/static/fonts/golos-text-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/static/fonts/literata-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/static/styles.css?v=5">
+
+    <script src="/scripts/theme.js?v=4" defer></script>
     {% block head %}{% endblock %}
 </head>
 <body data-authenticated="{{ 'true' if current_user else 'false' }}">
-    <div class="backdrop" aria-hidden="true">
-        <div class="orb orb-a"></div>
-        <div class="orb orb-b"></div>
-        <div class="grid"></div>
-    </div>
+    <div class="page-grain" aria-hidden="true"></div>
 
     {% include "partials/header.html" %}
 

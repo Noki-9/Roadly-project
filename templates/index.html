@@ -4,31 +4,45 @@
 
 {% block content %}
 <section class="hero">
-    <p class="eyebrow"><span class="pulse"></span>AI-планировщик обучения</p>
-    <h1>Превратите цель<br>в понятный <span class="gradient-text">roadmap</span></h1>
-    <p class="lead">
-        Опишите, чему хотите научиться или какой проект запустить. Мы разложим путь
-        на этапы, задачи и сроки — чтобы двигаться по шагам, а не тонуть в хаосе.
-    </p>
+    <div class="hero-main">
+        <p class="eyebrow">AI-планировщик обучения</p>
+        <h1>Превратите цель<br>в понятный <span class="accent-word">roadmap</span></h1>
+    </div>
+    <div class="hero-side">
+        <p class="lead">
+            Опишите, чему хотите научиться или какой проект запустить. Мы разложим путь
+            на этапы, задачи и сроки — чтобы двигаться по шагам, а не тонуть в хаосе.
+        </p>
+        <p class="hero-note">
+            10–20 секунд на генерацию<br>
+            Сохраняется в аккаунте<br>
+            Экспорт в Markdown
+        </p>
+    </div>
 </section>
 
 <section class="composer" id="generator" aria-labelledby="composerTitle">
-    <form id="roadmapForm" novalidate>
-        <div class="composer-head">
-            <h2 id="composerTitle">Опишите вашу цель</h2>
-            <span class="secure-note">
-                {% if current_user %}
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
-                    <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-                </svg>
-                Roadmap сохранится в вашем кабинете
-                {% else %}
-                <a href="/login?next=/%23generator">Войдите</a>&nbsp;— и roadmap сохранится
-                {% endif %}
-            </span>
-        </div>
+    <div class="composer-head">
+        <p class="section-label">01 — Бриф</p>
+        <h2 id="composerTitle">Опишите вашу цель</h2>
+        <p class="composer-desc">
+            Одно-два предложения: чего хотите достичь, за какой срок и сколько времени
+            готовы уделять. Чем конкретнее — тем точнее маршрут.
+        </p>
+        <span class="secure-note">
+            {% if current_user %}
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            Roadmap сохранится в вашем кабинете
+            {% else %}
+            <a href="/login?next=/%23generator">Войдите</a>&nbsp;— и roadmap сохранится
+            {% endif %}
+        </span>
+    </div>
 
+    <form id="roadmapForm" novalidate>
         <label class="sr-only" for="prompt">Ваша цель</label>
         <div class="textarea-wrap">
             <textarea
@@ -180,8 +194,10 @@
 
 <section class="how" id="how" aria-labelledby="howTitle">
     <div class="how-head">
-        <p class="eyebrow"><span class="pulse"></span>Три шага</p>
-        <h2 id="howTitle">От «хочу» до плана действий</h2>
+        <div>
+            <p class="section-label">02 — Как это работает</p>
+            <h2 id="howTitle">От «хочу» до плана действий</h2>
+        </div>
     </div>
     <div class="how-grid">
         <article class="how-card">
@@ -204,5 +220,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/scripts/app.js?v=2" defer></script>
+<script src="/scripts/app.js?v=4" defer></script>
 {% endblock %}

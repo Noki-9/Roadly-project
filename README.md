@@ -20,7 +20,8 @@ templates/index.html        лендинг и генератор
 templates/auth.html         вход и регистрация
 templates/dashboard.html    личный кабинет со всеми roadmap
 templates/roadmap.html      страница roadmap с чек-листом
-static/styles.css           стили (светлая/тёмная тема, адаптив)
+static/styles.css           стили (редакционная сетка, светлая/тёмная тема, адаптив)
+static/fonts/               self-hosted WOFF2: Literata и Golos Text (кириллица + латиница)
 scripts/theme.js            тема, шапка, flash-сообщения, подтверждения
 scripts/app.js              генерация, рендер, прогресс, экспорт на лендинге
 scripts/roadmap.js          прогресс и экспорт на странице roadmap

@@ -3,9 +3,9 @@
 {% block title %}{{ "Регистрация" if mode == "register" else "Вход" }} — Roadly{% endblock %}
 
 {% block content %}
-<section class="auth-shell">
+<section class="auth-shell auth-{{ mode }}">
     <aside class="auth-aside">
-        <p class="eyebrow"><span class="pulse"></span>Личный кабинет Roadly</p>
+        <p class="section-label">Аккаунт Roadly</p>
         <h1>Цели, планы и прогресс — в одном месте</h1>
         <p class="lead">
             Сохраняйте все roadmap в аккаунте, отмечайте выполненные задачи

@@ -4,7 +4,7 @@
 
 {% block content %}
 <section class="page-head">
-    <p class="eyebrow"><span class="pulse"></span>Личный кабинет</p>
+    <p class="eyebrow">Личный кабинет</p>
     <div class="page-head-row">
         <div>
             <h1>Мои roadmap</h1>
@@ -40,20 +40,25 @@
 </section>
 
 {% if roadmaps %}
-<div class="roadmap-grid">
+<div class="roadmap-index">
     {% for item in roadmaps %}
-    <article class="roadmap-card">
-        <div class="roadmap-card-top">
-            <span class="badge badge-ghost">
-                {{ item.stats.phases }} {{ plural_ru(item.stats.phases, "этап", "этапа", "этапов") }}
-            </span>
-            <span class="roadmap-date">{{ item.created_at }}</span>
+    <article class="roadmap-row">
+        <div class="roadmap-row-main">
+            <div class="roadmap-row-meta">
+                <span class="index-num">{{ "%02d"|format(loop.index) }}</span>
+                <span>{{ item.created_at }}</span>
+                <span>
+                    {{ item.stats.phases }}
+                    {{ plural_ru(item.stats.phases, "этап", "этапа", "этапов") }}
+                </span>
+                {% if item.demo %}<span>демо</span>{% endif %}
+            </div>
+
+            <h2><a href="/roadmaps/{{ item.id }}">{{ item.title }}</a></h2>
+            <p class="roadmap-summary">{{ item.summary or item.prompt }}</p>
         </div>
 
-        <h2><a href="/roadmaps/{{ item.id }}">{{ item.title }}</a></h2>
-        <p class="roadmap-summary">{{ item.summary or item.prompt }}</p>
-
-        <div class="roadmap-progress">
+        <div class="roadmap-row-progress">
             <div class="progress-top">
                 <span>
                     {{ item.stats.done }} из {{ item.stats.total }}
@@ -64,14 +69,8 @@
             <div class="progress-track"><span style="width: {{ item.stats.percent }}%"></span></div>
         </div>
 
-        <div class="roadmap-tags">
-            {% if item.level %}<span>{{ item.level }}</span>{% endif %}
-            {% if item.horizon %}<span>{{ item.horizon }}</span>{% endif %}
-            {% if item.demo %}<span>демо</span>{% endif %}
-        </div>
-
-        <div class="roadmap-card-actions">
-            <a class="ghost-btn" href="/roadmaps/{{ item.id }}">Открыть</a>
+        <div class="roadmap-row-actions">
+            <a class="text-link" href="/roadmaps/{{ item.id }}">Открыть →</a>
             <form
                 method="post"
                 action="/roadmaps/{{ item.id }}/delete"
@@ -79,7 +78,7 @@
                 data-confirm="Удалить «{{ item.title }}»? Это действие нельзя отменить."
             >
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button class="ghost-btn danger-btn" type="submit">Удалить</button>
+                <button class="text-link danger-btn" type="submit">Удалить</button>
             </form>
         </div>
     </article>
