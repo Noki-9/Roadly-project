@@ -6,6 +6,10 @@ from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
+# Загружаем .env до чтения DATABASE_URL, иначе переменная из файла
+# будет проигнорирована при импорте этого модуля.
+import core.env_config  # noqa: F401
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_DATABASE_URL = f"sqlite:///{BASE_DIR / 'roadly.db'}"
 DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL).strip()

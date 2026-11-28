@@ -1,8 +1,14 @@
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Секреты: .env и любые локальные .env.* не коммитим,
+# но пример конфигурации должен быть в репозитории.
 .env
-.env.example
+.env.*
+!.env.example
+
 roadly.db
 *.db
 .ruff_cache/
+.pytest_cache/

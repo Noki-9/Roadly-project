@@ -3,7 +3,7 @@
 Проверка провайдера LLM без вывода ключа.
 
 Использование:
-    .venv/bin/python scripts/check_llm.py
+    .venv/bin/python check_llm.py
 
 Коды выхода:
     0 — провайдер доступен и готов к работе (ключ принят или не требуется)
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import httpx
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
 
 

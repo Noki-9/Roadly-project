@@ -27,6 +27,9 @@ scripts/app.js              генерация, рендер, прогресс, 
 scripts/roadmap.js          прогресс и экспорт на странице roadmap
 check_llm.py                проверка провайдера без вывода ключа
 .env.example                пример конфигурации
+Dockerfile                  образ приложения (python:3.13-slim, non-root, healthcheck)
+docker-compose.yml          запуск в Docker с volume для SQLite
+.dockerignore               что не попадает в build context (включая .env)
 requirements.txt            зависимости
 ```
 
@@ -57,6 +60,34 @@ roadmap. Таблицы `users` и `roadmaps` создаются автомат�
 
 Скрипт не печатает ключ целиком и сообщает, принят ли он провайдером, какая
 модель доступна и в чём причина ошибки (неверный ключ, лимит, блокировка региона).
+
+## Docker
+
+```bash
+cp .env.example .env
+# отредактируйте .env: LLM_API_KEY, SESSION_SECRET и при необходимости HTTPS_PROXY
+
+docker compose up --build -d
+docker compose logs -f web
+```
+
+Приложение будет доступно на http://127.0.0.1:8000. Файл SQLite хранится в
+named volume `roadly-data`, поэтому данные переживают перезапуски и пересборки.
+
+```bash
+docker compose down       # остановить, данные сохраняются
+docker compose down -v    # остановить и удалить volume вместе с БД
+```
+
+`Dockerfile` собирает образ на `python:3.13-slim`, ставит зависимости отдельным
+слоем, запускает приложение от непривилегированного пользователя `roadly` и
+содержит `HEALTHCHECK` на `/api/health`. `docker-compose.yml` передаёт переменные
+из `.env` через `env_file`, переопределяет `DATABASE_URL` на `/app/data/roadly.db`
+и подключает volume. Сам `.env` в образ не копируется (см. `.dockerignore`).
+
+Если порт 8000 занят, измените маппинг в `docker-compose.yml`:
+`"8080:8000"`. Для доступа только с этой машины используйте
+`"127.0.0.1:8000:8000"`.
 
 ## Аккаунты и база данных
 
@@ -109,16 +140,17 @@ DATABASE_URL=postgresql+psycopg://roadly:password@127.0.0.1:5432/roadly
 
 | Вариант                  | Ключ      | Доступность из РФ | Ограничения                     |
 | ------------------------ | --------- | ----------------- | ------------------------------- |
-| **Pollinations** (по умолчанию) | не нужен  | да                | 1 запрос / 45 сек с одного IP   |
+| **Pollinations** (без ключа) | не нужен  | да                | 1 запрос / 45 сек с одного IP   |
 | DeepSeek                 | нужен     | да                | платно, недорого                |
 | SambaNova                | нужен     | да                | бесплатный тариф с лимитами     |
 | VseGPT / ProxyAPI        | нужен     | да                | бесплатные кредиты / платно     |
-| OpenAI, OpenRouter       | нужен     | **нет**, HTTP 403 | нужен VPN или `HTTPS_PROXY`     |
+| OpenRouter (Gemma 4 free)| нужен     | **нет**, HTTP 403 | ~50 запросов/сутки, VPN/прокси  |
+| OpenAI                   | нужен     | **нет**, HTTP 403 | нужен VPN или `HTTPS_PROXY`     |
 | Ollama (локально)        | не нужен  | да                | скорость зависит от CPU         |
 
 ### Pollinations — бесплатно и без ключа
 
-В `.env` по умолчанию:
+Если не нужен ключ, замените блок LLM в `.env` на:
 
 ```env
 LLM_CHAT_URL=https://text.pollinations.ai/openai
@@ -141,20 +173,27 @@ LLM_MODEL=deepseek-chat
 LLM_ALLOW_NO_KEY=0
 ```
 
-Подойдёт любой OpenAI-совместимый `/chat/completions`. Для OpenRouter нужен VPN
-или прокси: провайдер отдаёт `403 Access denied by security policy` по IP из РФ.
+Подойдёт любой OpenAI-совместимый `/chat/completions`.
 
-### OpenRouter через прокси
+### OpenRouter — бесплатная Gemma 4 (через прокси)
 
 ```env
 LLM_CHAT_URL=https://openrouter.ai/api/v1/chat/completions
+LLM_BASE_URL=https://openrouter.ai/api/v1
 LLM_API_KEY=sk-or-v1-...
-LLM_MODEL=openai/gpt-4o-mini
+LLM_MODEL=google/gemma-4-31b-it:free
 LLM_ALLOW_NO_KEY=0
 HTTPS_PROXY=http://127.0.0.1:1080
 ```
 
-`httpx` читает `HTTPS_PROXY` из окружения автоматически.
+Бесплатная Gemma 4 31B на OpenRouter: около 50 запросов в сутки на аккаунт.
+Модель поддерживает русский язык и хорошо держит JSON-схему roadmap. Если
+`google/gemma-4-31b-it:free` недоступна, подойдёт
+`google/gemma-4-26b-a4b-it:free`.
+
+Для OpenRouter нужен VPN или прокси: провайдер отдаёт
+`403 Access denied by security policy` по IP из РФ. `httpx` читает
+`HTTPS_PROXY` из окружения автоматически.
 
 ### Локальная Ollama
 
@@ -186,10 +225,12 @@ LLM_BASE_URL=http://127.0.0.1:11434/v1
 | `LLM_MODEL`         | `gpt-4o-mini`               | Имя модели                                        |
 | `LLM_ALLOW_NO_KEY`  | `0`                         | Разрешить работу без ключа (Pollinations, Ollama) |
 | `LLM_TIMEOUT`       | `90`                        | Таймаут запроса к модели, секунды                 |
+| `LLM_MAX_TOKENS`    | `4096`                      | Максимум токенов в ответе модели                  |
 | `ROADLY_DEMO`       | `0`                         | `1` — всегда демо-режим, без вызовов LLM          |
 | `SESSION_SECRET`    | `dev-secret-change-me`      | Секрет cookie-сессий, обязательно задайте свой    |
 | `SESSION_HTTPS_ONLY`| `0`                         | `1` — cookie сессии только по HTTPS               |
 | `DATABASE_URL`      | `sqlite:///roadly.db`       | Строка подключения SQLAlchemy                     |
+| `HTTPS_PROXY`       | —                           | Прокси для запросов к LLM (например, OpenRouter)  |
 
 Без ключа и без `LLM_ALLOW_NO_KEY` приложение работает в **демо-режиме**:
 интерфейс полностью функционален, но возвращается пример roadmap с пометкой

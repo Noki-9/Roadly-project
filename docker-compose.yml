@@ -1,0 +1,34 @@
+name: roadly
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: roadly:latest
+
+    # Все переменные из .env попадают в контейнер. Сам файл в образ не копируется.
+    env_file:
+      - .env
+
+    environment:
+      # В контейнере база живёт в named volume, а не внутри образа.
+      DATABASE_URL: sqlite:////app/data/roadly.db
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      # Данные SQLite сохраняются между перезапусками и пересборками.
+      - roadly-data:/app/data
+
+    restart: unless-stopped
+
+    # Корректно пересылать SIGTERM/SIGINT приложению и подчищать зомби-процессы.
+    init: true
+
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  roadly-data:
